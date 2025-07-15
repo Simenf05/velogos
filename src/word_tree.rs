@@ -8,7 +8,7 @@ use std::vec;
 
 use rand::seq::IndexedRandom;
 
-
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Node {
     pub parent: Option<Weak<RefCell<Node>>>,
@@ -74,6 +74,7 @@ impl Node {
         word
     }
 
+    #[allow(dead_code)]
     pub fn gen_word_with(&self, include: char) -> String {
         loop {
             let word = self.gen_word();
@@ -83,6 +84,7 @@ impl Node {
         }
     }
 
+    #[allow(dead_code)]
     pub fn walk(&self, f: &dyn Fn(&Node), bubble: bool) {
         if bubble {
             self.children.iter().for_each(|child| child.borrow().walk(f, bubble));

@@ -1,11 +1,13 @@
 use crossterm::{cursor::{MoveLeft, MoveRight, MoveToColumn, SetCursorStyle}, event::{self, Event, KeyCode}, style::{Color, ResetColor, SetForegroundColor}, terminal::{disable_raw_mode, enable_raw_mode, Clear}, ExecutableCommand};
 use std::{cell::{Ref, RefCell}, io::{self, stdout, Write}, rc::Rc};
 
-use crate::{command_line::{parse_command_line, show_help, GameMode}, statistics::show_stats, word_tree::Node};
+use crate::{command_line::{parse_command_line, show_help, GameMode, GameOpts}, statistics::show_stats, word_tree::Node};
 
 mod word_tree;
 mod statistics;
 mod command_line;
+
+const LINE_LENGTH: u32 = 10;
 
 fn take_char() -> Option<KeyCode> {
     let res = event::poll(std::time::Duration::from_millis(100));
@@ -50,20 +52,25 @@ fn wrong_char(correct_char: char) -> Result<(), io::Error> {
 }
 
 fn gen_line(root: Ref<'_, Node>, length: u32) -> String {
-    let mut line = root.gen_word();
+    let mut line = String::new();
 
-    for _ in 1..length {
-        line.push(' ');
+    for _ in 0..length {
         line.push_str(&root.gen_word());
+        line.push(' ');
     }
 
     line
 }
 
-fn typing_loop(root: Rc<RefCell<Node>>) -> Result<(), io::Error> {
+fn typing_loop(root: Rc<RefCell<Node>>, opts: GameOpts) -> Result<(), io::Error> {
 
-    let mut line = gen_line(root.borrow(), 10);
+    if let GameMode::ENDLESS =  opts.mode {
+        println!("Endless mode, click ESC to stop.")
+    }
+
+    let mut line = gen_line(root.borrow(), LINE_LENGTH);
     let mut completed_chars = 0;
+    let mut completed_lines = 0u16;
     write_new_line(&line)?;
 
     loop {
@@ -90,8 +97,17 @@ fn typing_loop(root: Rc<RefCell<Node>>) -> Result<(), io::Error> {
         }
 
         if completed_chars == line.len() {
-            line = gen_line(root.borrow(), 10);
             completed_chars = 0;
+            completed_lines += 1;
+
+            if let GameMode::LESSON = opts.mode {
+                if completed_lines > 2 {
+                    statistics::show_stats()?;
+                    break;
+                }
+            }
+
+            line = gen_line(root.borrow(), LINE_LENGTH);
             write_new_line(&line)?;
         }
     }
@@ -114,16 +130,27 @@ fn main() -> Result<(), io::Error>{
     let mut file_name = String::from("1000-words");
 
     if opts.file.is_some() {
-        file_name = opts.file.unwrap();
+        file_name = opts.file.clone().unwrap();
     }
 
-    let root = word_tree::Node::new(file_name)?;
+    let root = word_tree::Node::new(file_name.clone());
+
+    if root.is_err() {
+        let err_opt = root.err();
+
+        if err_opt.is_some() {
+            let err = err_opt.unwrap();
+            println!("{}\nFile name: {file_name}", err.to_string());
+        }
+        return Ok(());
+    }
+
     let mut stdout = stdout();
 
     enable_raw_mode()?;
     stdout.execute(SetCursorStyle::SteadyBar)?;
 
-    typing_loop(root)?;
+    typing_loop(root.unwrap(), opts)?;
 
     stdout.execute(SetCursorStyle::DefaultUserShape)?;
     stdout.execute(ResetColor)?;
