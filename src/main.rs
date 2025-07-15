@@ -111,7 +111,7 @@ fn main() -> Result<(), io::Error>{
         return Ok(());
     }
 
-    let mut file_name = String::from("words_alpha.txt");
+    let mut file_name = String::from("1000-words");
 
     if opts.file.is_some() {
         file_name = opts.file.unwrap();
