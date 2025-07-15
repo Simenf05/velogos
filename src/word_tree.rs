@@ -17,18 +17,17 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn new() -> Result<Rc<RefCell<Node>>, io::Error> {
+    pub fn new(file_name: String) -> Result<Rc<RefCell<Node>>, io::Error> {
 
         let root = Rc::new(RefCell::new(Node { children: Vec::new(), parent: None, letter: '\0' }));
-
-        Self::file_handle(root.clone())?;
+        Self::file_handle(root.clone(), file_name)?;
 
         return Ok(root);
     }
 
-    fn file_handle(root: Rc<RefCell<Node>>) -> Result<(), io::Error> {
+    fn file_handle(root: Rc<RefCell<Node>>, file_name: String) -> Result<(), io::Error> {
 
-        let file = fs::read_to_string("1-1000.txt")?;
+        let file = fs::read_to_string(file_name)?;
         let split = file.split("\n");
 
         for word in split {

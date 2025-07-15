@@ -1,5 +1,5 @@
 use crossterm::{cursor::{MoveLeft, MoveRight, MoveToColumn, SetCursorStyle}, event::{self, Event, KeyCode}, style::{Color, ResetColor, SetForegroundColor}, terminal::{disable_raw_mode, enable_raw_mode, Clear}, ExecutableCommand};
-use std::{cell::{Ref, RefCell}, env, io::{self, stdout, Write}, rc::Rc};
+use std::{cell::{Ref, RefCell}, io::{self, stdout, Write}, rc::Rc};
 
 use crate::{command_line::{parse_command_line, show_help, GameMode}, statistics::show_stats, word_tree::Node};
 
@@ -98,10 +98,6 @@ fn typing_loop(root: Rc<RefCell<Node>>) -> Result<(), io::Error> {
     Ok(())
 }
 
-
-
-
-
 fn main() -> Result<(), io::Error>{
     
     let opts = parse_command_line();
@@ -115,8 +111,13 @@ fn main() -> Result<(), io::Error>{
         return Ok(());
     }
 
+    let mut file_name = String::from("words_alpha.txt");
 
-    let root = word_tree::Node::new()?;
+    if opts.file.is_some() {
+        file_name = opts.file.unwrap();
+    }
+
+    let root = word_tree::Node::new(file_name)?;
     let mut stdout = stdout();
 
     enable_raw_mode()?;

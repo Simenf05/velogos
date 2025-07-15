@@ -11,13 +11,12 @@ pub enum GameMode {
 
 pub struct GameOpts {
     pub mode: GameMode,
-    file: Option<String>,
+    pub file: Option<String>,
 }
 
 pub fn show_help() {
     println!("typinghelp [--help|--stats|--endless] [--file ...]")
 }
-
 
 fn parse_three_or_more_options(args: &Vec<String>) -> Option<GameOpts> {
     let first_part = args.clone();
