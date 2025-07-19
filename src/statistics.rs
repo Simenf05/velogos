@@ -77,15 +77,25 @@ fn get_json_from_file() -> Result<JsonValue, io::Error> {
 }
 
 
-pub fn _update_stats() {
+pub fn update_stats(new_json: JsonValue) -> Result<(), io::Error> {
+    let mut content = get_json_from_file()?;
 
+    for entry in new_json.entries() {
+        let letter = entry.0.to_string();
+        let value = entry.1;
 
-
-    let _ = write_json_to_file(get_empty_json());
+        content[letter]["attempts"].push(object! {
+            acc: value["acc"].clone(),
+            wpm: value["wpm"].clone(),
+        }).expect("There is something wrong with the json.");
+    }
+    write_json_to_file(content)?;
+    Ok(())
 }
 
 
 pub fn show_stats() -> Result<(), io::Error> {
+
     let content = get_json_from_file()?;
 
     let mut letter_line = String::from("           ");
