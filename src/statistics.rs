@@ -78,7 +78,9 @@ fn get_json_from_file() -> Result<JsonValue, io::Error> {
 
 
 pub fn _update_stats() {
-    println!("To be implemented...");
+
+
+
     let _ = write_json_to_file(get_empty_json());
 }
 
@@ -87,8 +89,8 @@ pub fn show_stats() -> Result<(), io::Error> {
     let content = get_json_from_file()?;
 
     let mut letter_line = String::from("           ");
-    let mut first_line = String::from("accuracy %:  ");
-    let mut second_line = String::from("wpm:         ");
+    let mut first_line = String::from("accuracy %:");
+    let mut second_line = String::from("wpm:       ");
 
     for entry in content.entries() {
         let letter = entry.0;
@@ -111,7 +113,7 @@ pub fn show_stats() -> Result<(), io::Error> {
             first_line.push_str("    N/A");
         } else {
             let accuracy = accuracy_opt.unwrap();
-            first_line = format!("{first_line}{accuracy:5}");
+            first_line = format!("{first_line}{accuracy:7}");
         }
 
         let wpm_opt = &last_attempt["wpm"].as_f32();
@@ -119,7 +121,7 @@ pub fn show_stats() -> Result<(), io::Error> {
             second_line.push_str("    N/A");
         } else {
             let wpm = wpm_opt.unwrap();
-            second_line = format!("{second_line}{wpm:5}");
+            second_line = format!("{second_line}{wpm:7}");
         }
     }
 
