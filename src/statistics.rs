@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io;
 use std::fs;
 use std::io::Write;
+use std::time::Duration;
 use directories::ProjectDirs;
 use json::object;
 use json::JsonValue;
@@ -81,18 +82,46 @@ fn calc_accuracy(words: &Vec<&Word>) -> f64 {
     if length < 1 {
         return 0.0;
     }
-    let correct_letters_in_word = 
+    let count_correct_letters_in_word = 
         |word: &&Word| word.letters.iter().filter(|letter| letter.correct.unwrap_or(false) ).count();
-    let total_correct_letters: usize = words.iter().map(|word| correct_letters_in_word(word) ).sum();
+    let total_correct_letters: usize = words.iter().map(|word| count_correct_letters_in_word(word) ).sum();
     let acc: f64 = (total_correct_letters as f64 / length as f64) * 100f64;
-
     acc
 }
 
 fn calc_wpm(words: &Vec<&Word>) -> f64 {
 
+    let words: Vec<&&Word> = words
+        .iter()
+        .filter(
+            |word| word.letters
+                .iter()
+                .all(
+                    |letter| letter.correct.unwrap_or(false)
+                )
+        )
+        .collect();
 
-    0.0
+    let character_count: f64 = words.iter().map(|word| word.letters.len() as f64).sum();
+
+    let all_words_durations = words.iter().map(|word| word.time);
+
+    let mut total_duration = Duration::ZERO;
+
+    for word_duration_opt in all_words_durations {
+        if word_duration_opt.is_none() {
+            continue;;
+        }
+        let word_duration = word_duration_opt.unwrap();
+        total_duration += word_duration;
+    }
+
+    if total_duration.is_zero() {
+        return 0.0;
+    }
+
+    let wpm = (character_count / 5f64) / (total_duration.as_secs_f64() / 60f64);
+    wpm
 }
 
 
@@ -119,7 +148,6 @@ pub fn add_new_result(words: Vec<Word>) {
             wpm: letter_wpm,
         };
     }
-
     let res = update_stats(new_json);
 }
 
@@ -170,7 +198,7 @@ pub fn show_stats() -> Result<(), io::Error> {
             first_line.push_str("    N/A");
         } else {
             let accuracy = accuracy_opt.unwrap();
-            first_line = format!("{first_line}{accuracy:7.2}");
+            first_line = format!("{first_line}{accuracy:7.1}");
         }
 
         let wpm_opt = &last_attempt["wpm"].as_f32();
@@ -178,7 +206,7 @@ pub fn show_stats() -> Result<(), io::Error> {
             second_line.push_str("    N/A");
         } else {
             let wpm = wpm_opt.unwrap();
-            second_line = format!("{second_line}{wpm:7.2}");
+            second_line = format!("{second_line}{wpm:7.1}");
         }
     }
 

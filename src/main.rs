@@ -1,5 +1,5 @@
 use crossterm::{cursor::{MoveLeft, MoveRight, MoveToColumn, SetCursorStyle}, event::{self, Event, KeyCode}, style::{Color, ResetColor, SetForegroundColor}, terminal::{disable_raw_mode, enable_raw_mode, Clear}, ExecutableCommand};
-use std::{cell::{Ref, RefCell}, io::{self, stdout, Write}, rc::Rc};
+use std::{cell::{Ref, RefCell}, io::{self, stdout, Write}, rc::Rc, time::Instant};
 
 use crate::{command_line::{parse_command_line, show_help, GameMode, GameOpts}, statistics::{add_new_result, show_stats}, word_tree::{Node, Word}};
 
@@ -7,8 +7,8 @@ mod word_tree;
 mod statistics;
 mod command_line;
 
-const LINE_LENGTH: u32 = 10;
-const LINES_IN_LESSON: u16 = 3;
+const LINE_LENGTH: u32 = 20;
+const LINES_IN_LESSON: u16 = 1;
 
 fn take_char() -> Option<KeyCode> {
     let res = event::poll(std::time::Duration::from_millis(100));
@@ -80,6 +80,7 @@ fn typing_loop(root: Rc<RefCell<Node>>, opts: GameOpts) -> Result<(), io::Error>
 
     let mut word_index = 0;
     let mut letter_index = 0;
+    let mut word_now = Instant::now();
 
     let mut completed_lines = 0u16;
     write_new_line(&line)?;
@@ -112,6 +113,8 @@ fn typing_loop(root: Rc<RefCell<Node>>, opts: GameOpts) -> Result<(), io::Error>
         if letter_index == current_word.letters.len() {
             letter_index = 0;
             word_index += 1;
+            current_word.time = Some(word_now.elapsed());
+            word_now = Instant::now();
         }
 
         if word_index == words.len() {
