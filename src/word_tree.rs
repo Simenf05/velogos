@@ -4,6 +4,7 @@ use std::fs;
 use std::rc::Rc;
 use std::rc::Weak;
 use std::str::Chars;
+use std::time::Duration;
 use std::vec;
 
 use rand::seq::IndexedRandom;
@@ -14,6 +15,20 @@ pub struct Node {
     pub parent: Option<Weak<RefCell<Node>>>,
     pub children: Vec<Rc<RefCell<Node>>>,
     pub letter: char,
+}
+
+#[derive(Debug)]
+pub struct Letter {
+    pub letter: char,
+    pub correct: Option<bool>,
+}
+
+#[derive(Debug)]
+pub struct Word {
+    pub letters: Vec<Letter>,
+    pub output: String,
+    #[allow(unused)]
+    pub time: Option<Duration>,
 }
 
 impl Node {
@@ -62,26 +77,55 @@ impl Node {
         return Ok(());
     }
 
-    pub fn gen_word(&self) -> String {
+    pub fn gen_word(&self) -> Word {
         let child = self.children.choose(&mut rand::rng());
         if child.is_none() {
-            return String::from(self.letter);
+            return Word {
+                letters: vec![Letter {
+                    letter: self.letter,
+                    correct: None,
+                }],
+                output: String::from(self.letter),
+                time: None,
+            }
         }
         let mut word = child.unwrap().borrow().gen_word();
         if self.letter != '\0' {
-            word.insert(0, self.letter);
+            word.output.insert(0, self.letter);
+            word.letters.insert(0, Letter { letter: self.letter, correct: None });
         }
+
+        word
+    }
+
+
+    #[allow(dead_code)]
+    pub fn gen_word_with_space(&self) -> Word {
+        let mut word = self.gen_word();
+        word.letters.push(Letter { letter: ' ', correct: None });
+        word.output = format!("{} ", word.output);
         word
     }
 
     #[allow(dead_code)]
-    pub fn gen_word_with(&self, include: char) -> String {
+    pub fn gen_word_with(&self, include: char) -> Word {
         loop {
             let word = self.gen_word();
-            if word.contains(include) {
+            if word.letters
+                .iter()
+                .map(|word| word.letter)
+                .any(|letter| letter == include) 
+            {
                 return word;
             }
         }
+    }
+
+    pub fn gen_word_with_space_includes(&self, include: char) -> Word {
+        let mut word = self.gen_word_with(include);
+        word.letters.push(Letter { letter: ' ', correct: None });
+        word.output = format!("{} ", word.output);
+        word
     }
 
     #[allow(dead_code)]

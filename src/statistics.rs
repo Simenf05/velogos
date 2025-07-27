@@ -8,6 +8,9 @@ use json::object;
 use json::JsonValue;
 use std::path::PathBuf;
 
+use crate::word_tree::Word;
+
+const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyz";
 
 fn write_json_to_file(json_to_write: JsonValue) -> Result<(), io::Error> {
     let path = get_stats_path();
@@ -17,11 +20,9 @@ fn write_json_to_file(json_to_write: JsonValue) -> Result<(), io::Error> {
     Ok(())
 }
 
-
 fn get_empty_json() -> JsonValue {
-    let mut json = object! {};
-    let alphabet = "abcdefghijklmnopqrstuvwxyz";
-    for letter in alphabet.chars() {
+    let mut json = object! { all: { attempts: [] } };
+    for letter in ALPHABET.chars() {
         let inner_json = object! {
             attempts: [],
         };
@@ -29,8 +30,6 @@ fn get_empty_json() -> JsonValue {
     }
     json
 }
-
-
 
 fn get_stats_path() -> PathBuf {
     if let Some(dir) = ProjectDirs::from("org", "fritsvold", "velogos") {
@@ -76,15 +75,64 @@ fn get_json_from_file() -> Result<JsonValue, io::Error> {
     Ok(content)
 }
 
+fn calc_accuracy(words: &Vec<&Word>) -> f64 {
+    
+    let length: usize = words.iter().map(|word| word.output.len()).sum();
+    if length < 1 {
+        return 0.0;
+    }
+    let correct_letters_in_word = 
+        |word: &&Word| word.letters.iter().filter(|letter| letter.correct.unwrap_or(false) ).count();
+    let total_correct_letters: usize = words.iter().map(|word| correct_letters_in_word(word) ).sum();
+    let acc: f64 = (total_correct_letters as f64 / length as f64) * 100f64;
 
-pub fn update_stats(new_json: JsonValue) -> Result<(), io::Error> {
+    acc
+}
+
+fn calc_wpm(words: &Vec<&Word>) -> f64 {
+
+
+    0.0
+}
+
+
+pub fn add_new_result(words: Vec<Word>) {
+
+    let all_acc = calc_accuracy(&words.iter().collect());
+    let all_wpm = calc_wpm(&words.iter().collect());
+
+    let mut new_json = object! {
+        all: { acc: all_acc, wpm: all_wpm }
+    };
+
+    for letter in ALPHABET.chars() {
+        let words_with_letter: Vec<&Word> = words.iter().filter(|word| word.output.contains(letter)).collect();
+
+        if words_with_letter.len() == 0 {
+            continue;
+        }
+        let letter_acc = calc_accuracy(&words_with_letter);
+        let letter_wpm = calc_wpm(&words_with_letter);
+
+        new_json[letter.to_string()] = object! {
+            acc: letter_acc,
+            wpm: letter_wpm,
+        };
+    }
+
+    let res = update_stats(new_json);
+}
+
+
+#[allow(dead_code)]
+fn update_stats(new_json: JsonValue) -> Result<(), io::Error> {
     let mut content = get_json_from_file()?;
 
     for entry in new_json.entries() {
         let letter = entry.0.to_string();
         let value = entry.1;
 
-        content[letter]["attempts"].push(object! {
+        content[&letter]["attempts"].push(object! {
             acc: value["acc"].clone(),
             wpm: value["wpm"].clone(),
         }).expect("There is something wrong with the json.");
@@ -104,8 +152,7 @@ pub fn show_stats() -> Result<(), io::Error> {
 
     for entry in content.entries() {
         let letter = entry.0;
-        letter_line.push_str("      ");
-        letter_line.push_str(letter);
+        letter_line.push_str(format!("{letter:>7}").as_str());
 
         let attempts = &entry.1["attempts"];
         let attempts_count = attempts.len();
@@ -123,7 +170,7 @@ pub fn show_stats() -> Result<(), io::Error> {
             first_line.push_str("    N/A");
         } else {
             let accuracy = accuracy_opt.unwrap();
-            first_line = format!("{first_line}{accuracy:7}");
+            first_line = format!("{first_line}{accuracy:7.2}");
         }
 
         let wpm_opt = &last_attempt["wpm"].as_f32();
@@ -131,7 +178,7 @@ pub fn show_stats() -> Result<(), io::Error> {
             second_line.push_str("    N/A");
         } else {
             let wpm = wpm_opt.unwrap();
-            second_line = format!("{second_line}{wpm:7}");
+            second_line = format!("{second_line}{wpm:7.2}");
         }
     }
 
