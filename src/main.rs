@@ -1,11 +1,12 @@
 use crossterm::{cursor::{MoveLeft, MoveRight, MoveToColumn, SetCursorStyle}, event::{self, Event, KeyCode}, style::{Color, ResetColor, SetForegroundColor}, terminal::{disable_raw_mode, enable_raw_mode, Clear}, ExecutableCommand};
-use std::{cell::{Ref, RefCell}, io::{self, stdout, Write}, rc::Rc, time::Instant};
+use std::{cell::{Ref, RefCell}, io::{self, stdout, Error, Write}, rc::Rc, time::Instant};
 
 use crate::{command_line::{parse_command_line, show_help, GameMode, GameOpts}, statistics::{add_new_result, show_stats}, word_tree::{Node, Word}};
 
 mod word_tree;
 mod statistics;
 mod command_line;
+mod plot;
 
 const LINE_LENGTH: u32 = 20;
 const LINES_IN_LESSON: u16 = 1;
@@ -70,9 +71,7 @@ fn gen_string_line(line: &Vec<Word>) -> String {
 
 fn typing_loop(root: Rc<RefCell<Node>>, opts: GameOpts) -> Result<(), io::Error> {
 
-    if let GameMode::ENDLESS =  opts.mode {
-        println!("Endless mode, click ESC to stop.")
-    }
+    println!("Click ESC to stop.");
     let mut old_lines = vec!();
 
     let mut words = gen_line(root.borrow(), LINE_LENGTH);
@@ -91,6 +90,7 @@ fn typing_loop(root: Rc<RefCell<Node>>, opts: GameOpts) -> Result<(), io::Error>
         if code_opt.is_some() {
             let pressed_char = code_opt.unwrap();
             if pressed_char == KeyCode::Esc {
+                add_new_result(old_lines);
                 break;
             }
 
@@ -141,6 +141,9 @@ fn typing_loop(root: Rc<RefCell<Node>>, opts: GameOpts) -> Result<(), io::Error>
 }
 
 fn main() -> Result<(), io::Error>{
+
+    println!("{}", plot::get_plot());
+    std::process::exit(0);
     
     let opts = parse_command_line();
     
@@ -176,7 +179,12 @@ fn main() -> Result<(), io::Error>{
     enable_raw_mode()?;
     stdout.execute(SetCursorStyle::SteadyBar)?;
 
-    typing_loop(root.unwrap(), opts)?;
+    let res = typing_loop(root.unwrap(), opts);
+
+    if res.is_err() {
+        let err = res.unwrap_err(); 
+        eprintln!("Error: {}", err);
+    }
 
     stdout.execute(SetCursorStyle::DefaultUserShape)?;
     stdout.execute(ResetColor)?;
