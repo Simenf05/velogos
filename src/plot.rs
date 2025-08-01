@@ -72,15 +72,68 @@ impl Plot {
     }
 
 
-    fn make_diagonal(&self, start_coord: Coord, end_coord: Coord) {
+    fn make_diagonal(&mut self, start_coord: Coord, end_coord: Coord) -> Result<(), String> {
+
+        let mut dy: isize = end_coord.y as isize - start_coord.y as isize;
+        let mut reflect_y = false;
+        if dy < 0 {
+            reflect_y = true;
+            dy = -dy;
+        }
+
+        let mut place_with_reflect_y = |coord: Coord| -> Result<(), String> {
+            if reflect_y 
+            { self.place_star(Coord::new(coord.x, start_coord.y - (coord.y - start_coord.y)))?; } 
+            else 
+            { self.place_star(Coord::new(coord.x, coord.y))?; }
+            Ok(())
+        };
+
+        let dx: isize = end_coord.x as isize - start_coord.x as isize;
+
+        if dy <= dx {
+            let mut d: isize = dy - (dx / 2);
+            let mut x: usize = start_coord.x;
+            let mut y: usize = start_coord.y;
+
+            place_with_reflect_y(Coord::new(x, y))?;
+            while x < end_coord.x {
+                x += 1;
+                if d < 0 {
+                    d += dy;
+                }
+                else {
+                    d = d + dy - dx;
+                    y += 1;
+                }
+
+                place_with_reflect_y(Coord::new(x, y))?;
+            }
+        }
+        else if dx <= dy {
+
+            let mut d: isize = dx - (dy / 2);
+            let mut x: usize = start_coord.x;
+            let mut y: usize = start_coord.y;
 
 
+            place_with_reflect_y(Coord::new(x, y))?;
+            while y < end_coord.y {
+                y += 1;
 
+                if d < 0 {
+                    d += dx;
+                }
+                else {
+                    d = d + dx - dy;
+                    x += 1;
+                }
 
+                place_with_reflect_y(Coord::new(x, y))?;
+            }
+        }
 
-        let F = |coord: Coord| 0;
-
-
+    Ok(())
     }
 }
 
@@ -124,13 +177,7 @@ pub fn get_plot() -> String {
     let dim = 40;
     let mut plot = Plot::new(dim*2, dim);
 
-    let range = 0..80;
-
-    for i in range {
-        let coord = Coord::new(i, i / 2);
-        let _ = plot.place_star(coord);
-    }
-
+    let res = plot.make_diagonal(Coord::new(10, 39), Coord::new(40, 19));
 
 
     println!("{}", plot);
