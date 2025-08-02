@@ -1,4 +1,4 @@
-use std::{fmt::{self, write}, process::Output};
+use std::{fmt::{self, write}, process::Output, ptr::null, usize, vec};
 
 use crate::plot;
 
@@ -74,6 +74,7 @@ impl Plot {
 
     fn make_diagonal(&mut self, start_coord: Coord, end_coord: Coord) -> Result<(), String> {
 
+        let dx: isize = end_coord.x as isize - start_coord.x as isize;
         let mut dy: isize = end_coord.y as isize - start_coord.y as isize;
         let mut reflect_y = false;
         if dy < 0 {
@@ -88,8 +89,6 @@ impl Plot {
             { self.place_star(Coord::new(coord.x, coord.y))?; }
             Ok(())
         };
-
-        let dx: isize = end_coord.x as isize - start_coord.x as isize;
 
         if dy <= dx {
             let mut d: isize = dy - (dx / 2);
@@ -116,9 +115,9 @@ impl Plot {
             let mut x: usize = start_coord.x;
             let mut y: usize = start_coord.y;
 
-
             place_with_reflect_y(Coord::new(x, y))?;
-            while y < end_coord.y {
+            let condition = |y: usize| if reflect_y { start_coord.y - (y - start_coord.y) > end_coord.y } else { y < end_coord.y };
+            while condition(y) {
                 y += 1;
 
                 if d < 0 {
@@ -168,21 +167,161 @@ impl fmt::Display for Plot  {
     }
 }
 
+fn find_scaler(biggest_num: u16, size: u16) -> f32 {
+    let mut scaler = 1.0;
+    let biggest_num_float = biggest_num as f32;
+    while biggest_num_float * scaler >= size as f32 {
+        scaler -= 0.01
+    }
+    scaler
+}
 
-// 9 x 21
+fn equal_remove(arr: &mut [usize], start: usize, end: usize, mut amount: u16, is_left: bool) -> u16 {
+    
+    println!("start: {}", start);
+    let length = end - start;
+    println!("len: {}", length + 1);
+    let sep = length / 2 + start;
+    println!("sep: {}", sep);
+    let mid = &mut arr[sep];
 
-pub fn get_plot() -> String {
+    let mut removed = 0u16;
+    if length > 0 {
+        println!("amount: {}", amount);
+    }
 
-    // let plot = Plot::new(150, 40);
-    let dim = 40;
-    let mut plot = Plot::new(dim*2, dim);
+    if amount % 2 != 0 {
+        // println!("removing mid: {mid}, new amount: {}", amount - 1);
+        *mid = usize::MAX;
+        amount -= 1;
+        removed += 1;
+    }
 
-    let res = plot.make_diagonal(Coord::new(10, 39), Coord::new(40, 19));
+    if is_left {
+        if length >= 1 {
+            removed += equal_remove(arr, start, sep, amount / 2, true);
+        }
+
+        if length >= 2 {
+            removed += equal_remove(arr, sep+1, end, amount / 2, false);
+        }
+    }
+    else {
+        if length >= 2 {
+            removed += equal_remove(arr, start, sep, amount / 2, true);
+        }
+
+        if length >= 1 {
+            removed += equal_remove(arr, sep+1, end, amount / 2, false);
+        }
+    }
+
+    if length > 0 {
+        println!("removed: {}", removed);
+        println!()
+    }
+
+    return removed;
+}
 
 
-    println!("{}", plot);
+pub fn get_plot(mut nums: Vec<usize>) -> String {
+
+    let mut arr = [1; 5];
+    let len = arr.len();
+
+    let amount = 4;
+
+    let removed = equal_remove(&mut arr, 0, len - 1, amount, false);
+
+    let mut new_nums = vec!();
+
+    for el in arr {
+        if el == usize::MAX {
+            continue;
+        }
+        new_nums.push(el);
+    }
+    println!("{:?}", arr);
+
+    println!("reported removed: {}", removed);
+    println!("correct len: {}", len - amount as usize);
+    println!("actual len: {}", new_nums.len());
+
+    return String::new();
+
+    let size_res = crossterm::terminal::size();
+    let mut size = (80, 40);
+
+    if size_res.is_ok() {
+        size = size_res.unwrap();
+        let width = (size.0 as f32 / 2.4f32) as u16;
+        size.0 = width;
+        size.1 -= 5;
+    }
+
+    let biggest_num = (*nums.iter().max().unwrap_or(&0)) as u16;
+
+    if biggest_num >= size.1 {
+        let scaler = find_scaler(biggest_num, size.1);
+        nums = nums.iter().cloned().map(|x| (x as f32 * scaler) as usize).collect();
+    }
+
+    let length_of_nums = nums.len() as u16;
+    println!("{}", length_of_nums);
+
+    let nums = if length_of_nums >= size.0 {
+        let scaler = find_scaler(length_of_nums, size.0);
+        let max_length_tolerated = (length_of_nums as f32 * scaler - 1f32) as usize;
+        let amount_to_remove = 129; // length_of_nums - max_length_tolerated as u16;
+
+        let arr = nums.as_mut_slice();
+
+        equal_remove(arr, 0, arr.len() - 1, amount_to_remove, false);
+
+        let mut new_nums = vec!();
+
+        for el in arr {
+            if *el == usize::MAX {
+                continue;
+            }
+            new_nums.push(*el);
+        }
+
+        println!("old len: {}", length_of_nums);
+        println!("max len: {}", max_length_tolerated);
+        println!("amount to remove: {}", amount_to_remove);
+        println!();
+
+        println!("correct new len: {}", length_of_nums - amount_to_remove);
+        println!("new len: {}", new_nums.len());
+
+        println!();
+
+        new_nums
+    } else { nums };
+
+    println!("{nums:?}");
+
+    let mut plot = Plot::new(size.0.into(), size.1.into());
+
+    let mut y = 49;
+    let mut x = 0;
+
+    let x_diff = size.0 as usize / nums.len();
+    
 
 
-    String::new()
+    println!("x_diff: {x_diff}");
+
+    for num in nums {
+        let res = plot.make_diagonal(Coord::new(x, y), Coord::new(x+x_diff, num));
+        x += x_diff;
+        y = num;
+    }
+
+    // let res = plot.make_diagonal(Coord::new(0, 10), Coord::new(19, 40));
+
+    format!("{}", plot)
 }
 

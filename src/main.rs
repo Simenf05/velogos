@@ -142,7 +142,27 @@ fn typing_loop(root: Rc<RefCell<Node>>, opts: GameOpts) -> Result<(), io::Error>
 
 fn main() -> Result<(), io::Error>{
 
-    println!("{}", plot::get_plot());
+    let f = |x: f32| x*x;
+    let g = |x: f32| f32::sin(x) * 12f32 + 22f32;
+
+    let mut nums = vec![];
+    for i in 0..2 {
+        // nums.push(f(i) as usize);
+        // nums.push(g(i as f32) as usize);
+    }
+
+    let function = g;
+
+    for i in 0..40 {
+        nums.push(function(i as f32) as usize);
+        nums.push(function(i as f32 + 0.2) as usize);
+        nums.push(function(i as f32 + 0.4) as usize);
+        nums.push(function(i as f32 + 0.8) as usize);
+    }
+    // println!("{:?}", nums);
+
+    println!("{}", plot::get_plot(nums));
+    
     std::process::exit(0);
     
     let opts = parse_command_line();
