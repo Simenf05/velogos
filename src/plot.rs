@@ -1,7 +1,22 @@
-use std::{fmt::{self, write}, process::Output, ptr::null, usize, vec};
+use std::{fmt::{self}, usize, vec};
 
-use crate::plot;
+use crate::statistics::get_letter_data;
 
+#[derive(Debug)]
+pub struct PlotData {
+    pub plot_type: PlotType,
+    pub letter: Option<String>,
+}
+
+#[derive(Debug)]
+pub enum PlotType {
+    LetterWpm,
+    AllWpm,
+    LetterAcc,
+    AllAcc,
+    Sin,
+    Square,
+}
 
 struct Coord {
     x: usize,
@@ -13,7 +28,6 @@ impl Coord {
         Coord { x, y }
     }
 }
-
 
 struct Plot {
     grid: Vec<String>,
@@ -177,33 +191,44 @@ fn find_scaler(biggest_num: u16, size: u16) -> f32 {
 }
 
 fn equal_remove(arr: &mut [usize], start: usize, end: usize, mut amount: u16, is_left: bool) -> u16 {
-    
-    println!("start: {}", start);
     let length = end - start;
-    println!("len: {}", length + 1);
-    let sep = length / 2 + start;
-    println!("sep: {}", sep);
+
+    let divide_by_two_up = |x: f32| (x / 2f32).ceil();
+    let divide_by_two_down = |x: f32| (x / 2f32).floor();
+    let calc_sep = |length: usize| -> usize {
+        if length % 2 == 0 {
+            (if is_left { divide_by_two_up(length as f32) } else { divide_by_two_down(length as f32) }) as usize
+        }
+        else {
+            divide_by_two_down(length as f32) as usize
+        }
+    };
+
+    let sep = calc_sep(length) + start;
     let mid = &mut arr[sep];
 
     let mut removed = 0u16;
-    if length > 0 {
-        println!("amount: {}", amount);
-    }
 
     if amount % 2 != 0 {
-        // println!("removing mid: {mid}, new amount: {}", amount - 1);
         *mid = usize::MAX;
         amount -= 1;
         removed += 1;
     }
 
+    if length == amount as usize {
+        for i in 0..amount as usize {
+            arr[start+i] = usize::MAX;
+        }
+        return amount;
+    }
+
     if is_left {
-        if length >= 1 {
-            removed += equal_remove(arr, start, sep, amount / 2, true);
+        if length >= 2 {
+            removed += equal_remove(arr, start, sep, amount / 2, false);
         }
 
-        if length >= 2 {
-            removed += equal_remove(arr, sep+1, end, amount / 2, false);
+        if length >= 3 {
+            removed += equal_remove(arr, sep+1, end, amount / 2, true);
         }
     }
     else {
@@ -211,44 +236,123 @@ fn equal_remove(arr: &mut [usize], start: usize, end: usize, mut amount: u16, is
             removed += equal_remove(arr, start, sep, amount / 2, true);
         }
 
-        if length >= 1 {
+        if length >= 3 {
             removed += equal_remove(arr, sep+1, end, amount / 2, false);
         }
-    }
-
-    if length > 0 {
-        println!("removed: {}", removed);
-        println!()
     }
 
     return removed;
 }
 
+#[allow(dead_code)]
+fn test_equal_remove() {
+
+    for i in 0..200u16 {
+        for j in 0..i {
+
+            let mut vec = vec!();
+
+            for k in 0..i {
+                vec.push(k as usize);
+            }
+
+            let arr = vec.as_mut_slice();
+            let len = arr.len();
+
+            let amount = j;
+            let removed = equal_remove(arr, 0, len, amount, false);
+            let mut new_nums = vec!();
+
+            for el in arr {
+                if *el == usize::MAX {
+                    continue;
+                }
+                new_nums.push(el);
+            }
+
+            assert_eq!(removed, amount);
+            assert_eq!(new_nums.len(), len - amount as usize);
+        }
+    }
+}
+
+#[allow(dead_code)]
+pub fn get_square() -> String {
+    let f = |x: f32| x*x;
+
+    let mut nums = vec![];
+    let function = f;
+
+    for i in -22..22 {
+        nums.push(function(i as f32) as usize);
+        nums.push(function(i as f32 + 0.2) as usize);
+        nums.push(function(i as f32 + 0.4) as usize);
+        nums.push(function(i as f32 + 0.6) as usize);
+        nums.push(function(i as f32 + 0.8) as usize);
+    }
+
+    get_plot(nums)
+}
+
+#[allow(dead_code)]
+pub fn get_tan() -> String {
+    let tan = |x: f32| f32::tan(x) * 40f32 + 500f32;
+
+    let mut nums = vec![];
+    let function = tan;
+
+    for i in 0..15 {
+        nums.push(function(i as f32));
+        nums.push(function(i as f32 + 0.2));
+        nums.push(function(i as f32 + 0.4));
+        nums.push(function(i as f32 + 0.6));
+        nums.push(function(i as f32 + 0.8));
+    }
+    get_plot(nums.iter().map(|a| *a as usize).collect())
+}
+
+pub fn get_sin() -> String {
+    let sin = |x: f32| f32::sin(x) * 8f32 + 22f32;
+
+    let mut nums = vec![];
+    let function = sin;
+
+    for i in 0..28{
+        nums.push(function(i as f32) as usize);
+        nums.push(function(i as f32 + 0.3) as usize);
+        nums.push(function(i as f32 + 0.7) as usize);
+    }
+    get_plot(nums)
+}
+
+pub fn get_letter_plot(plot_data: PlotData) -> String {
+    
+    let is_wpm = {
+        if plot_data.letter.is_none() {
+            if let PlotType::AllWpm = plot_data.plot_type {
+                true
+            }
+            else {
+                false
+            }
+        }
+        else {
+            if let PlotType::LetterWpm = plot_data.plot_type {
+                true
+            }
+            else {
+                false
+            }
+        }
+    };
+
+    let letter = plot_data.letter.unwrap_or(String::from("all"));
+    let nums = get_letter_data(&letter, is_wpm);
+
+    get_plot(nums)
+}
 
 pub fn get_plot(mut nums: Vec<usize>) -> String {
-
-    let mut arr = [1; 5];
-    let len = arr.len();
-
-    let amount = 4;
-
-    let removed = equal_remove(&mut arr, 0, len - 1, amount, false);
-
-    let mut new_nums = vec!();
-
-    for el in arr {
-        if el == usize::MAX {
-            continue;
-        }
-        new_nums.push(el);
-    }
-    println!("{:?}", arr);
-
-    println!("reported removed: {}", removed);
-    println!("correct len: {}", len - amount as usize);
-    println!("actual len: {}", new_nums.len());
-
-    return String::new();
 
     let size_res = crossterm::terminal::size();
     let mut size = (80, 40);
@@ -268,16 +372,15 @@ pub fn get_plot(mut nums: Vec<usize>) -> String {
     }
 
     let length_of_nums = nums.len() as u16;
-    println!("{}", length_of_nums);
 
     let nums = if length_of_nums >= size.0 {
         let scaler = find_scaler(length_of_nums, size.0);
         let max_length_tolerated = (length_of_nums as f32 * scaler - 1f32) as usize;
-        let amount_to_remove = 129; // length_of_nums - max_length_tolerated as u16;
+        let amount_to_remove = length_of_nums - max_length_tolerated as u16;
 
         let arr = nums.as_mut_slice();
 
-        equal_remove(arr, 0, arr.len() - 1, amount_to_remove, false);
+        equal_remove(arr, 0, arr.len(), amount_to_remove, false);
 
         let mut new_nums = vec!();
 
@@ -287,40 +390,33 @@ pub fn get_plot(mut nums: Vec<usize>) -> String {
             }
             new_nums.push(*el);
         }
-
-        println!("old len: {}", length_of_nums);
-        println!("max len: {}", max_length_tolerated);
-        println!("amount to remove: {}", amount_to_remove);
-        println!();
-
-        println!("correct new len: {}", length_of_nums - amount_to_remove);
-        println!("new len: {}", new_nums.len());
-
-        println!();
-
         new_nums
     } else { nums };
 
-    println!("{nums:?}");
-
     let mut plot = Plot::new(size.0.into(), size.1.into());
 
-    let mut y = 49;
+    if nums.len() < 2 {
+        println!("Too few numbers.");
+        std::process::exit(1);
+    }
+
+    let mut y = *nums.first().unwrap();
     let mut x = 0;
 
     let x_diff = size.0 as usize / nums.len();
     
-
-
-    println!("x_diff: {x_diff}");
-
-    for num in nums {
+    for num_index in 1..nums.len()-1 {
+        let num = nums[num_index];
         let res = plot.make_diagonal(Coord::new(x, y), Coord::new(x+x_diff, num));
+        if res.is_err() {
+            println!("{:?}", res.err());
+            y = (size.1 / 2) as usize;
+            x += 1;
+            continue;
+        }
         x += x_diff;
         y = num;
     }
-
-    // let res = plot.make_diagonal(Coord::new(0, 10), Coord::new(19, 40));
 
     format!("{}", plot)
 }

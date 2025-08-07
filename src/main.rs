@@ -1,7 +1,7 @@
 use crossterm::{cursor::{MoveLeft, MoveRight, MoveToColumn, SetCursorStyle}, event::{self, Event, KeyCode}, style::{Color, ResetColor, SetForegroundColor}, terminal::{disable_raw_mode, enable_raw_mode, Clear}, ExecutableCommand};
-use std::{cell::{Ref, RefCell}, io::{self, stdout, Error, Write}, rc::Rc, time::Instant};
+use std::{cell::{Ref, RefCell}, io::{self, stdout, Write}, rc::Rc, time::Instant};
 
-use crate::{command_line::{parse_command_line, show_help, GameMode, GameOpts}, statistics::{add_new_result, show_stats}, word_tree::{Node, Word}};
+use crate::{command_line::{parse_command_line, show_help, GameMode, GameOpts}, plot::{get_letter_plot, get_sin, get_square, PlotType}, statistics::{add_new_result, show_stats}, word_tree::{Node, Word}};
 
 mod word_tree;
 mod statistics;
@@ -142,30 +142,7 @@ fn typing_loop(root: Rc<RefCell<Node>>, opts: GameOpts) -> Result<(), io::Error>
 
 fn main() -> Result<(), io::Error>{
 
-    let f = |x: f32| x*x;
-    let g = |x: f32| f32::sin(x) * 12f32 + 22f32;
-
-    let mut nums = vec![];
-    for i in 0..2 {
-        // nums.push(f(i) as usize);
-        // nums.push(g(i as f32) as usize);
-    }
-
-    let function = g;
-
-    for i in 0..40 {
-        nums.push(function(i as f32) as usize);
-        nums.push(function(i as f32 + 0.2) as usize);
-        nums.push(function(i as f32 + 0.4) as usize);
-        nums.push(function(i as f32 + 0.8) as usize);
-    }
-    // println!("{:?}", nums);
-
-    println!("{}", plot::get_plot(nums));
-    
-    std::process::exit(0);
-    
-    let opts = parse_command_line();
+    let opts: GameOpts = parse_command_line();
     
     if let GameMode::HELP = opts.mode {
         show_help();
@@ -173,6 +150,24 @@ fn main() -> Result<(), io::Error>{
     }
     if let GameMode::STATS = opts.mode {
         show_stats()?;
+        return Ok(());
+    }
+
+    if let GameMode::PLOT = opts.mode {
+        let plot_data_opt = &opts.plot_data;
+        if plot_data_opt.is_none() {
+            println!("There was something wrong with the arguments.");
+            std::process::exit(1);
+        }
+
+        let plot_data = opts.plot_data.unwrap();
+        let plot = match plot_data.plot_type {
+            PlotType::Sin => get_sin(),
+            PlotType::Square => get_square(),
+            _ => get_letter_plot(plot_data),
+        };
+
+        println!("{}", plot);
         return Ok(());
     }
 

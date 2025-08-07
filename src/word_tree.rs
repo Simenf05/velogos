@@ -121,6 +121,7 @@ impl Node {
         }
     }
 
+    #[allow(dead_code)]
     pub fn gen_word_with_space_includes(&self, include: char) -> Word {
         let mut word = self.gen_word_with(include);
         word.letters.push(Letter { letter: ' ', correct: None });

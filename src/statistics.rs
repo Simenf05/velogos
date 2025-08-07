@@ -11,7 +11,7 @@ use std::path::PathBuf;
 
 use crate::word_tree::Word;
 
-const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyz";
+pub const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyz";
 
 fn write_json_to_file(json_to_write: JsonValue) -> Result<(), io::Error> {
     let path = get_stats_path();
@@ -57,7 +57,6 @@ fn get_stats_path() -> PathBuf {
         }
         
         return file_path;
-
     }
     else {
         println!("Could not find project directory path.");
@@ -110,7 +109,7 @@ fn calc_wpm(words: &Vec<&Word>) -> f64 {
 
     for word_duration_opt in all_words_durations {
         if word_duration_opt.is_none() {
-            continue;;
+            continue;
         }
         let word_duration = word_duration_opt.unwrap();
         total_duration += word_duration;
@@ -149,6 +148,9 @@ pub fn add_new_result(words: Vec<Word>) {
         };
     }
     let res = update_stats(new_json);
+    if res.is_err() {
+        println!("Failed to update json with this error: {:?}", res.err())
+    }
 }
 
 
@@ -214,4 +216,28 @@ pub fn show_stats() -> Result<(), io::Error> {
     println!("{}", first_line);
     println!("{}", second_line);
     Ok(())
+}
+
+
+pub fn get_letter_data(letter: &String, is_wpm: bool) -> Vec<usize> {
+    let content = get_json_from_file();
+    if content.is_err() {
+        println!("Got this error while reading statistics from file: {:?}", content.as_ref().err())
+    }
+
+    let content = content.unwrap();
+    let attempts = &content[letter]["attempts"];
+    let wpm_or_acc = if is_wpm { "wpm" } else { "acc" };
+
+    let nums_in_string: Vec<String> = attempts
+        .members()
+        .map(|attempt| attempt[wpm_or_acc].to_string())
+        .collect();
+    let nums: Vec<usize> = nums_in_string
+        .iter()
+        .map(|string| string.parse::<f32>())
+        .filter(|res| res.is_ok())
+        .map(|ok_res| ok_res.unwrap() as usize)
+        .collect();
+    nums
 }
