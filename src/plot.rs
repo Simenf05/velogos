@@ -1,4 +1,7 @@
-use std::{fmt::{self}, usize, vec};
+use std::{
+    fmt::{self},
+    usize, vec,
+};
 
 use crate::statistics::get_letter_data;
 
@@ -36,9 +39,7 @@ struct Plot {
 }
 
 impl Plot {
-
     fn new(width: usize, height: usize) -> Plot {
-
         let mut grid = vec![];
 
         for _ in 0..height {
@@ -53,7 +54,6 @@ impl Plot {
     }
 
     fn translate_coords(coord: Coord, width: usize, height: usize) -> Result<Coord, String> {
-
         if coord.x > width {
             return Err(format!("The x coordinate is too big, got: {}", coord.x));
         }
@@ -66,7 +66,6 @@ impl Plot {
     }
 
     fn place_star(&mut self, coord: Coord) -> Result<(), String> {
-
         let translated_coord = Plot::translate_coords(coord, self.width, self.height)?;
 
         let x = translated_coord.x;
@@ -80,14 +79,12 @@ impl Plot {
 
         let line = line_opt.unwrap();
 
-        line.replace_range(x..x+1, "*");
+        line.replace_range(x..x + 1, "*");
 
         Ok(())
     }
 
-
     fn make_diagonal(&mut self, start_coord: Coord, end_coord: Coord) -> Result<(), String> {
-
         let dx: isize = end_coord.x as isize - start_coord.x as isize;
         let mut dy: isize = end_coord.y as isize - start_coord.y as isize;
         let mut reflect_y = false;
@@ -97,10 +94,14 @@ impl Plot {
         }
 
         let mut place_with_reflect_y = |coord: Coord| -> Result<(), String> {
-            if reflect_y 
-            { self.place_star(Coord::new(coord.x, start_coord.y - (coord.y - start_coord.y)))?; } 
-            else 
-            { self.place_star(Coord::new(coord.x, coord.y))?; }
+            if reflect_y {
+                self.place_star(Coord::new(
+                    coord.x,
+                    start_coord.y - (coord.y - start_coord.y),
+                ))?;
+            } else {
+                self.place_star(Coord::new(coord.x, coord.y))?;
+            }
             Ok(())
         };
 
@@ -114,30 +115,32 @@ impl Plot {
                 x += 1;
                 if d < 0 {
                     d += dy;
-                }
-                else {
+                } else {
                     d = d + dy - dx;
                     y += 1;
                 }
 
                 place_with_reflect_y(Coord::new(x, y))?;
             }
-        }
-        else if dx <= dy {
-
+        } else if dx <= dy {
             let mut d: isize = dx - (dy / 2);
             let mut x: usize = start_coord.x;
             let mut y: usize = start_coord.y;
 
             place_with_reflect_y(Coord::new(x, y))?;
-            let condition = |y: usize| if reflect_y { start_coord.y - (y - start_coord.y) > end_coord.y } else { y < end_coord.y };
+            let condition = |y: usize| {
+                if reflect_y {
+                    start_coord.y - (y - start_coord.y) > end_coord.y
+                } else {
+                    y < end_coord.y
+                }
+            };
             while condition(y) {
                 y += 1;
 
                 if d < 0 {
                     d += dx;
-                }
-                else {
+                } else {
                     d = d + dx - dy;
                     x += 1;
                 }
@@ -146,7 +149,7 @@ impl Plot {
             }
         }
 
-    Ok(())
+        Ok(())
     }
 }
 
@@ -164,8 +167,7 @@ fn insert_spaces(line: &mut String) -> String {
     new_line
 }
 
-impl fmt::Display for Plot  {
-    
+impl fmt::Display for Plot {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut width = self.width * 2;
         width += self.width / 3;
@@ -175,9 +177,17 @@ impl fmt::Display for Plot  {
 
         let first_and_last_line = format!("+{:-<width$}+", "");
         let mut grid = self.grid.clone();
-        grid = grid.iter_mut().map(|line| insert_spaces(line)).map(|line| format!("|{}|", line)).collect();
+        grid = grid
+            .iter_mut()
+            .map(|line| insert_spaces(line))
+            .map(|line| format!("|{}|", line))
+            .collect();
         let output = grid.join("\n");
-        write!(f, "{first_and_last_line}\n{}\n{first_and_last_line}\n", output)
+        write!(
+            f,
+            "{first_and_last_line}\n{}\n{first_and_last_line}\n",
+            output
+        )
     }
 }
 
@@ -190,16 +200,25 @@ fn find_scaler(biggest_num: u16, size: u16) -> f32 {
     scaler
 }
 
-fn equal_remove(arr: &mut [usize], start: usize, end: usize, mut amount: u16, is_left: bool) -> u16 {
+fn equal_remove(
+    arr: &mut [usize],
+    start: usize,
+    end: usize,
+    mut amount: u16,
+    is_left: bool,
+) -> u16 {
     let length = end - start;
 
     let divide_by_two_up = |x: f32| (x / 2f32).ceil();
     let divide_by_two_down = |x: f32| (x / 2f32).floor();
     let calc_sep = |length: usize| -> usize {
         if length % 2 == 0 {
-            (if is_left { divide_by_two_up(length as f32) } else { divide_by_two_down(length as f32) }) as usize
-        }
-        else {
+            (if is_left {
+                divide_by_two_up(length as f32)
+            } else {
+                divide_by_two_down(length as f32)
+            }) as usize
+        } else {
             divide_by_two_down(length as f32) as usize
         }
     };
@@ -217,7 +236,7 @@ fn equal_remove(arr: &mut [usize], start: usize, end: usize, mut amount: u16, is
 
     if length == amount as usize {
         for i in 0..amount as usize {
-            arr[start+i] = usize::MAX;
+            arr[start + i] = usize::MAX;
         }
         return amount;
     }
@@ -228,16 +247,15 @@ fn equal_remove(arr: &mut [usize], start: usize, end: usize, mut amount: u16, is
         }
 
         if length >= 3 {
-            removed += equal_remove(arr, sep+1, end, amount / 2, true);
+            removed += equal_remove(arr, sep + 1, end, amount / 2, true);
         }
-    }
-    else {
+    } else {
         if length >= 2 {
             removed += equal_remove(arr, start, sep, amount / 2, true);
         }
 
         if length >= 3 {
-            removed += equal_remove(arr, sep+1, end, amount / 2, false);
+            removed += equal_remove(arr, sep + 1, end, amount / 2, false);
         }
     }
 
@@ -246,11 +264,9 @@ fn equal_remove(arr: &mut [usize], start: usize, end: usize, mut amount: u16, is
 
 #[allow(dead_code)]
 fn test_equal_remove() {
-
     for i in 0..200u16 {
         for j in 0..i {
-
-            let mut vec = vec!();
+            let mut vec = vec![];
 
             for k in 0..i {
                 vec.push(k as usize);
@@ -261,7 +277,7 @@ fn test_equal_remove() {
 
             let amount = j;
             let removed = equal_remove(arr, 0, len, amount, false);
-            let mut new_nums = vec!();
+            let mut new_nums = vec![];
 
             for el in arr {
                 if *el == usize::MAX {
@@ -278,7 +294,7 @@ fn test_equal_remove() {
 
 #[allow(dead_code)]
 pub fn get_square() -> String {
-    let f = |x: f32| x*x;
+    let f = |x: f32| x * x;
 
     let mut nums = vec![];
     let function = f;
@@ -317,7 +333,7 @@ pub fn get_sin() -> String {
     let mut nums = vec![];
     let function = sin;
 
-    for i in 0..28{
+    for i in 0..28 {
         nums.push(function(i as f32) as usize);
         nums.push(function(i as f32 + 0.3) as usize);
         nums.push(function(i as f32 + 0.7) as usize);
@@ -326,21 +342,17 @@ pub fn get_sin() -> String {
 }
 
 pub fn get_letter_plot(plot_data: PlotData) -> String {
-    
     let is_wpm = {
         if plot_data.letter.is_none() {
             if let PlotType::AllWpm = plot_data.plot_type {
                 true
-            }
-            else {
+            } else {
                 false
             }
-        }
-        else {
+        } else {
             if let PlotType::LetterWpm = plot_data.plot_type {
                 true
-            }
-            else {
+            } else {
                 false
             }
         }
@@ -353,7 +365,6 @@ pub fn get_letter_plot(plot_data: PlotData) -> String {
 }
 
 pub fn get_plot(mut nums: Vec<usize>) -> String {
-
     let size_res = crossterm::terminal::size();
     let mut size = (80, 40);
 
@@ -368,7 +379,11 @@ pub fn get_plot(mut nums: Vec<usize>) -> String {
 
     if biggest_num >= size.1 {
         let scaler = find_scaler(biggest_num, size.1);
-        nums = nums.iter().cloned().map(|x| (x as f32 * scaler) as usize).collect();
+        nums = nums
+            .iter()
+            .cloned()
+            .map(|x| (x as f32 * scaler) as usize)
+            .collect();
     }
 
     let length_of_nums = nums.len() as u16;
@@ -382,7 +397,7 @@ pub fn get_plot(mut nums: Vec<usize>) -> String {
 
         equal_remove(arr, 0, arr.len(), amount_to_remove, false);
 
-        let mut new_nums = vec!();
+        let mut new_nums = vec![];
 
         for el in arr {
             if *el == usize::MAX {
@@ -391,7 +406,9 @@ pub fn get_plot(mut nums: Vec<usize>) -> String {
             new_nums.push(*el);
         }
         new_nums
-    } else { nums };
+    } else {
+        nums
+    };
 
     let mut plot = Plot::new(size.0.into(), size.1.into());
 
@@ -404,10 +421,10 @@ pub fn get_plot(mut nums: Vec<usize>) -> String {
     let mut x = 0;
 
     let x_diff = size.0 as usize / nums.len();
-    
-    for num_index in 1..nums.len()-1 {
+
+    for num_index in 1..nums.len() - 1 {
         let num = nums[num_index];
-        let res = plot.make_diagonal(Coord::new(x, y), Coord::new(x+x_diff, num));
+        let res = plot.make_diagonal(Coord::new(x, y), Coord::new(x + x_diff, num));
         if res.is_err() {
             println!("{:?}", res.err());
             y = (size.1 / 2) as usize;
@@ -420,4 +437,3 @@ pub fn get_plot(mut nums: Vec<usize>) -> String {
 
     format!("{}", plot)
 }
-

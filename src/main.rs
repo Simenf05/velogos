@@ -1,12 +1,28 @@
-use crossterm::{cursor::{MoveLeft, MoveRight, MoveToColumn, SetCursorStyle}, event::{self, Event, KeyCode}, style::{Color, ResetColor, SetForegroundColor}, terminal::{disable_raw_mode, enable_raw_mode, Clear}, ExecutableCommand};
-use std::{cell::{Ref, RefCell}, io::{self, stdout, Write}, rc::Rc, time::Instant};
+use crossterm::{
+    ExecutableCommand,
+    cursor::{MoveLeft, MoveRight, MoveToColumn, SetCursorStyle},
+    event::{self, Event, KeyCode},
+    style::{Color, ResetColor, SetForegroundColor},
+    terminal::{Clear, disable_raw_mode, enable_raw_mode},
+};
+use std::{
+    cell::{Ref, RefCell},
+    io::{self, Write, stdout},
+    rc::Rc,
+    time::Instant,
+};
 
-use crate::{command_line::{parse_command_line, show_help, GameMode, GameOpts}, plot::{get_letter_plot, get_sin, get_square, PlotType}, statistics::{add_new_result, show_stats}, word_tree::{Node, Word}};
+use crate::{
+    command_line::{GameMode, GameOpts, parse_command_line, show_help},
+    plot::{PlotType, get_letter_plot, get_sin, get_square},
+    statistics::{add_new_result, show_stats},
+    word_tree::{Node, Word},
+};
 
-mod word_tree;
-mod statistics;
 mod command_line;
 mod plot;
+mod statistics;
+mod word_tree;
 
 const LINE_LENGTH: u32 = 20;
 const LINES_IN_LESSON: u16 = 1;
@@ -18,7 +34,6 @@ fn take_char() -> Option<KeyCode> {
         return Option::None;
     }
     if res.unwrap() {
-        
         let event = event::read();
 
         if event.is_err() {
@@ -28,7 +43,6 @@ fn take_char() -> Option<KeyCode> {
         if let Event::Key(key_event) = event.unwrap() {
             return Option::Some(key_event.code);
         }
-
     }
     Option::None
 }
@@ -42,11 +56,10 @@ fn write_new_line(line: &String) -> Result<(), io::Error> {
     Ok(())
 }
 
-
 fn wrong_char(correct_char: char) -> Result<(), io::Error> {
     let mut stdout = stdout();
     stdout.execute(SetForegroundColor(Color::Red))?;
-    write!(stdout, "{}",  correct_char)?;
+    write!(stdout, "{}", correct_char)?;
     stdout.execute(ResetColor)?;
     stdout.execute(MoveLeft(1))?;
     stdout.flush()?;
@@ -70,9 +83,8 @@ fn gen_string_line(line: &Vec<Word>) -> String {
 }
 
 fn typing_loop(root: Rc<RefCell<Node>>, opts: GameOpts) -> Result<(), io::Error> {
-
     println!("Click ESC to stop.");
-    let mut old_lines = vec!();
+    let mut old_lines = vec![];
 
     let mut words = gen_line(root.borrow(), LINE_LENGTH);
     let mut line = gen_string_line(&words);
@@ -103,8 +115,7 @@ fn typing_loop(root: Rc<RefCell<Node>>, opts: GameOpts) -> Result<(), io::Error>
                 if correct_letter.correct.is_none() {
                     correct_letter.correct = Some(true);
                 }
-            }
-            else {
+            } else {
                 wrong_char(correct_char)?;
                 correct_letter.correct = Some(false);
             }
@@ -140,10 +151,9 @@ fn typing_loop(root: Rc<RefCell<Node>>, opts: GameOpts) -> Result<(), io::Error>
     Ok(())
 }
 
-fn main() -> Result<(), io::Error>{
-
+fn main() -> Result<(), io::Error> {
     let opts: GameOpts = parse_command_line();
-    
+
     if let GameMode::HELP = opts.mode {
         show_help();
         return Ok(());
@@ -197,7 +207,7 @@ fn main() -> Result<(), io::Error>{
     let res = typing_loop(root.unwrap(), opts);
 
     if res.is_err() {
-        let err = res.unwrap_err(); 
+        let err = res.unwrap_err();
         eprintln!("Error: {}", err);
     }
 
